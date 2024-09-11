@@ -1,9 +1,10 @@
-name: Deploy to ECR
+name: Deploy to ECR and EKS
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
   ECR_REPOSITORY: kajal-repo
@@ -24,7 +25,8 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
+        env:
+          AWS_DEBUG: true
 
       - name: Login to Amazon ECR
         id: login-ecr
