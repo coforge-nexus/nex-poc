@@ -24,10 +24,8 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::442426854264:role/GitHubActionsDeployRole
-          aws-region: ${{ env.AWS_REGION }}
-        env:
-          AWS_DEBUG: true
-
+          aws-region: eu-west-1
+        
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
