@@ -11,7 +11,7 @@ permissions:
   contents: read  # Required for actions/checkout
 
 env:
-  ECR_REPOSITORY: kajal-repo
+  ECR_REPOSITORY: nexus-repo
   EKS_CLUSTER_NAME: nx-poc-cluster
   AWS_REGION: eu-west-1    
 
