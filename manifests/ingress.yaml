@@ -10,7 +10,7 @@ spec:
   - host: 
     http:
       paths:
-      - path: /nx/b/bff/redirection-search-internal/v1
+      - path: /nexus-java
         pathType: Prefix
         backend:
           service:
