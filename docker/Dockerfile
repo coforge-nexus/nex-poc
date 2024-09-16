@@ -1,13 +1,5 @@
-FROM node:20-alpine
-
-WORKDIR /app
-
-COPY package*.json .
-
-RUN npm install
-
-COPY . .
-
+FROM openjdk:17-jdk-alpine
+WORKDIR /
+COPY app.jar .
 EXPOSE 8080
-
-CMD [ "npm","run","dev" ]
+ENTRYPOINT ["java","-jar","/app.jar"]
