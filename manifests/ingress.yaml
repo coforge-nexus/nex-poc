@@ -10,7 +10,7 @@ spec:
   - host: 
     http:
       paths:
-      - path: /nexus-java
+      - path: /
         pathType: Prefix
         backend:
           service:
