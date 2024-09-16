@@ -1,23 +1,23 @@
 apiVersion: apps/v1 
 kind: Deployment
 metadata:
-  name: nexusapp-ecr
+  name: nexus-java
   labels: 
-     app: nexusapp-ecr
+     app: nexus-java
 
 spec:
   replicas: 1 
   selector:
     matchLabels:
-      app: nexusapp-ecr
+      app: nexus-java
 
   template:
     metadata:
       labels:
-        app: nexusapp-ecr
+        app: nexus-java
     spec:
       containers:
-      - name: nexusapp-ecr
+      - name: nexus-java
         image: DOCKER_IMAGE
         imagePullPolicy: Always
         ports:
