@@ -1,16 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: nx-poc-service
+  name: nx-poc-java
   labels:
-    app: nexusapp-ecr
+    app: nexus-java
 spec:
   selector:
-    app: nexusapp-ecr
+    app: nexus-java
 
   ports:
     - port: 80
       targetPort: 5173
-
-  type: LoadBalancer
   
