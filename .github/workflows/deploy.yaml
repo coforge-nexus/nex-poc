@@ -52,14 +52,14 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+     # - name: Update kubeconfig
+     #   run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-      - name: Deploy to EKS
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+     # - name: Deploy to EKS
+     #   env:
+     #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+     #     ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+     #     IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
        # run: |
        #   sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" manifests/deployment.yaml
        #   kubectl apply -f manifests/deployment.yaml --validate=false
