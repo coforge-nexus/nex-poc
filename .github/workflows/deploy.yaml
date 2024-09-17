@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: Build and Push Image
+    name: Build, Scan, and Push Image
     runs-on: ubuntu-latest
 
     steps:
@@ -41,7 +41,7 @@ jobs:
         id: get-timestamp
         run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
 
-      - name: Build, tag, and push the image to Amazon ECR
+      - name: Build the Docker image
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -49,4 +49,18 @@ jobs:
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
+
+      # Add Snyk scanning for the Docker image
+      - name: Set up Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk using GitHub
+        run: snyk auth --github
+
+      - name: Scan Docker image for vulnerabilities
+        run: snyk test --docker $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # Push the Docker image to Amazon ECR
+      - name: Push image to Amazon ECR
+        run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
