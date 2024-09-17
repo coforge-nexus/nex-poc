@@ -11,7 +11,7 @@ spec:
   - host: 
     http:
       paths:
-      - path: /nexus1
+      - path: /
         pathType: Prefix
         backend:
           service:
