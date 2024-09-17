@@ -1,4 +1,4 @@
-name: Build, Scan, and Push to ECR 
+name: Deploy to ECR
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 
 env:
   ECR_REPOSITORY: nexus-repo
-  AWS_REGION: eu-west-1    
+  AWS_REGION: eu-west-1
 
 jobs:
   build:
@@ -50,29 +50,28 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
 
-      # Install Snyk CLI
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
+      - name: List Docker Images
+        run: docker images
 
-      - name: Install Snyk CLI
+      - name: Verify Docker Image Build
+        run: docker images | grep $ECR_REPOSITORY
+
+      # Install Snyk CLI
+      - name: Set up Snyk CLI
         run: npm install -g snyk
 
-      # Authenticate Snyk using the token
+      # Authenticate Snyk
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      # Scan Docker image for vulnerabilities using Snyk
+      # Scan Docker image for vulnerabilities
       - name: Scan Docker image for vulnerabilities
-        run: snyk test --docker $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        run: snyk test --docker "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}"
 
-      # Push Docker image to Amazon ECR
+      # Push the Docker image to Amazon ECR
       - name: Push image to Amazon ECR
-        run: docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Check ECR Repository
-        run: aws ecr describe-repositories --region ${{ env.AWS_REGION }}
+        run: |
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: List Images in ECR Repository
         run: aws ecr list-images --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
