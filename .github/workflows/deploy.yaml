@@ -53,12 +53,19 @@ jobs:
       - name: List Docker Images
         run: docker images
 
+      # Install Snyk CLI
+      - name: Set up Snyk CLI
+        run: npm install -g snyk
+
+      # Authenticate Snyk
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
+      # Scan Docker image for vulnerabilities
       - name: Scan Docker image for vulnerabilities
         run: snyk test --docker $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
+      # Push the Docker image to Amazon ECR
       - name: Push image to Amazon ECR
         run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
