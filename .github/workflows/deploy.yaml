@@ -49,6 +49,10 @@ jobs:
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
+          
+      # Debugging step: List Docker images
+      - name: List Docker Images
+        run: docker images
 
       # Add Snyk scanning for the Docker image
       - name: Set up Snyk CLI
