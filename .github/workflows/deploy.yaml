@@ -47,9 +47,7 @@ jobs:
           IMAGE_TAG="${{ env.commit_hash }}-${{ env.timestamp }}"
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
           docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${IMAGE_TAG} -f docker/Dockerfile .
-
-      - name: List Docker Images
-        run: docker images
+          docker images
 
       - name: Push image to Amazon ECR
         run: |
@@ -61,14 +59,11 @@ jobs:
       - name: List Images in ECR Repository
         run: aws ecr list-images --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
 
-      # Install Snyk CLI
       - name: Set up Snyk CLI
         run: npm install -g snyk
 
-      # Authenticate Snyk
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      # Scan Docker image for vulnerabilities
       - name: Scan Docker image for vulnerabilities
         run: snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} --debug
