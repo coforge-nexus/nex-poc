@@ -50,13 +50,8 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
 
-      # Debugging step: List Docker images
       - name: List Docker Images
         run: docker images
-
-      # Add Snyk scanning for the Docker image
-      - name: Set up Snyk CLI
-        run: npm install -g snyk
 
       - name: Authenticate Snyk
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
@@ -64,7 +59,12 @@ jobs:
       - name: Scan Docker image for vulnerabilities
         run: snyk test --docker $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # Push the Docker image to Amazon ECR
       - name: Push image to Amazon ECR
         run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Check ECR Repository
+        run: aws ecr describe-repositories --region ${{ env.AWS_REGION }}
+
+      - name: List Images in ECR Repository
+        run: aws ecr list-images --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
