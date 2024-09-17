@@ -54,8 +54,8 @@ jobs:
       - name: Set up Snyk CLI
         run: npm install -g snyk
 
-      - name: Authenticate Snyk using GitHub
-        run: snyk auth --github
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
       - name: Scan Docker image for vulnerabilities
         run: snyk test --docker $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
