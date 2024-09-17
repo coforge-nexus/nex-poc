@@ -7,12 +7,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
-  contents: read
+  id-token: write # Required for requesting the JWT
+  contents: read  # Required for actions/checkout
 
 env:
   ECR_REPOSITORY: nexus-repo
-  AWS_REGION: eu-west-1
+  AWS_REGION: eu-west-1    
 
 jobs:
   build:
@@ -53,9 +53,6 @@ jobs:
       - name: List Docker Images
         run: docker images
 
-      - name: Verify Docker Image Build
-        run: docker images | grep $ECR_REPOSITORY
-
       # Install Snyk CLI
       - name: Set up Snyk CLI
         run: npm install -g snyk
@@ -66,12 +63,15 @@ jobs:
 
       # Scan Docker image for vulnerabilities
       - name: Scan Docker image for vulnerabilities
-        run: snyk test --docker "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}"
+        run: snyk test --docker $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
 
       # Push the Docker image to Amazon ECR
       - name: Push image to Amazon ECR
         run: |
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.IMAGE_TAG }}
+
+      - name: Check ECR Repository
+        run: aws ecr describe-repositories --region ${{ env.AWS_REGION }}
 
       - name: List Images in ECR Repository
         run: aws ecr list-images --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
