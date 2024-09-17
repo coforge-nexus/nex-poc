@@ -4,7 +4,7 @@ metadata:
   name: nx-poc-java
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/app-root: /nx/b/bff/redirection-search-internal/v1
+    #nginx.ingress.kubernetes.io/app-root: /nx/b/bff/redirection-search-internal/v1
 spec:
   ingressClassName: nginx
   rules:
