@@ -61,11 +61,23 @@ jobs:
       - name: Snyk Authentication
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      # Snyk scan for vulnerabilities in the Dockerfile
       - name: Snyk Dockerfile Test
+        continue-on-error: true  # This allows the workflow to continue even if Snyk finds vulnerabilities
         run: |
-          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --file=docker/Dockerfile --severity-threshold=high --dont-break-build
-
+          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --file=docker/Dockerfile --severity-threshold=high --json > snyk-results.json
+      
+      - name: Upload Snyk results
+        uses: actions/upload-artifact@v2
+        with:
+          name: snyk-results
+          path: snyk-results.json
+      
+      - name: Check Snyk results
+        run: |
+          if [ $(jq '.vulnerabilities | length' snyk-results.json) -gt 0 ]; then
+            echo "Vulnerabilities found. Please review snyk-results.json"
+            exit 1
+          fi
       # Push Docker image to ECR
       - name: Push Docker image to Amazon ECR
         run: |
