@@ -57,11 +57,11 @@ jobs:
         run: |
           npm install -g snyk
 
-      # Snyk Security Scan - Will not fail the workflow on vulnerabilities
+      # Snyk Security Scan - No fail option
       - name: Snyk Security Scan
         run: |
           snyk auth ${{ secrets.SNYK_TOKEN }}
-          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --fail-on=never
+          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
 
       - name: Push Docker image to Amazon ECR
         run: |
