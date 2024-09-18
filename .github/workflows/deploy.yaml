@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read  # Required for actions/checkout
+  id-token: write  # Required for requesting the JWT
+  contents: read   # Required for actions/checkout
 
 env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1    
 
 jobs:
-  build:
-    name: Build, Scan, and Push Image
+  build_and_push:
+    name: Build, Scan, and Push Image to ECR
     runs-on: ubuntu-latest
 
     steps:
@@ -41,29 +41,30 @@ jobs:
         id: get-timestamp
         run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
 
-      - name: Build the Docker image
-        id: build-image
+      - name: Snyk Security Scan
+        uses: snyk/actions/docker@v2
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
+          args: test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Build Docker image
         run: |
-          IMAGE_TAG="${{ env.commit_hash }}-${{ env.timestamp }}"
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
-          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${IMAGE_TAG} -f docker/Dockerfile .
-          docker images
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} -f docker/Dockerfile .
 
-      - name: Push image to Amazon ECR
+      - name: Push Docker image to Amazon ECR
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
 
-      - name: Check ECR Repository
-        run: aws ecr describe-repositories --region ${{ env.AWS_REGION }}
+  pull_image:
+    name: Pull Image from ECR
+    runs-on: ubuntu-latest
 
-      - name: List Images in ECR Repository
-        run: aws ecr list-images --repository-name ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }}
+    steps:
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Set up Snyk CLI
-        run: npm install -g snyk
-
-      - name: Authenticate Snyk
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}
-
-      - name: Scan Docker image for vulnerabilities
-        run: snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} --debug
+      - name: Pull Docker image from ECR
+        run: |
+          docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
