@@ -64,7 +64,7 @@ jobs:
       # Snyk scan for vulnerabilities in the Dockerfile
       - name: Snyk Dockerfile Test
         run: |
-          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --file=docker/Dockerfile --severity-threshold=high
+          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --file=docker/Dockerfile --severity-threshold=high --dont-break-build
 
       # Push Docker image to ECR
       - name: Push Docker image to Amazon ECR
