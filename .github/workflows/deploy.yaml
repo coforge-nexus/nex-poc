@@ -1,4 +1,4 @@
-name: Build, Scan, and Push to ECR
+name: Build, Test, and Push to ECR
 
 on:
   push:
@@ -15,8 +15,8 @@ env:
   AWS_REGION: eu-west-1    
 
 jobs:
-  build_scan_push:
-    name: Build, Scan, and Push Image to ECR
+  build_test_push:
+    name: Build, Test, and Push Image to ECR
     runs-on: ubuntu-latest
 
     steps:
@@ -46,11 +46,6 @@ jobs:
         run: |
           docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} -f docker/Dockerfile .
 
-      # Push Docker image to ECR
-      - name: Push Docker image to Amazon ECR
-        run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
-
       # Install Node.js (required for npm)
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -66,12 +61,12 @@ jobs:
       - name: Snyk Authentication
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      # Pull image from ECR for scanning
-      - name: Pull Docker image from ECR
+      # Snyk scan for vulnerabilities in the Dockerfile
+      - name: Snyk Dockerfile Test
         run: |
-          docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
+          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --file=docker/Dockerfile --severity-threshold=high
 
-      # Snyk scan for vulnerabilities in the Docker image
-      - name: Snyk Security Scan
+      # Push Docker image to ECR
+      - name: Push Docker image to Amazon ECR
         run: |
-          snyk container test ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --file=docker/Dockerfile --severity-threshold=high
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
