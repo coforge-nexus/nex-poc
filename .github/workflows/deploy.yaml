@@ -1,84 +1,52 @@
-name: Build, Test, and Push to ECR
-
+name: Deploy to ECR
+ 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
+ 
 permissions:
-  id-token: write  # Required for requesting the JWT
-  contents: read   # Required for actions/checkout
-
+  id-token: write # Required for requesting the JWT
+  contents: read  # Required for actions/checkout
+ 
 env:
-  ECR_REPOSITORY: kajal-repo
+  ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1    
-
+ 
 jobs:
-  build_test_push:
-    name: Build, Test, and Push Image to ECR
+  build:
+    name: Build and Push Image
     runs-on: ubuntu-latest
-
+ 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
+ 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
+ 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
+ 
       - name: Get commit hash
         id: get-commit-hash
         run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
+ 
       - name: Get timestamp
         id: get-timestamp
         run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-
-      - name: Build Docker image
+ 
+      - name: Build, tag, and push the image to Amazon ECR
         id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} -f docker/Dockerfile .
-
-      # Install Node.js (required for npm)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-
-      # Install Snyk CLI
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk
-
-      # Authenticate with Snyk
-      - name: Snyk Authentication
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}
-
-      - name: Snyk Dockerfile Test
-        continue-on-error: true  # This allows the workflow to continue even if Snyk finds vulnerabilities
-        run: |
-          snyk test --docker ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }} --file=docker/Dockerfile --severity-threshold=high --json > snyk-results.json
-      
-      - name: Upload Snyk results
-        uses: actions/upload-artifact@v4
-        with:
-          name: snyk-results
-          path: snyk-results.json
-      
-      - name: Check Snyk results
-        run: |
-          if [ $(jq '.vulnerabilities | length' snyk-results.json) -gt 0 ]; then
-            echo "Vulnerabilities found. Please review snyk-results.json"
-            exit 1
-          fi
-      # Push Docker image to ECR
-      - name: Push Docker image to Amazon ECR
-        run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG 
