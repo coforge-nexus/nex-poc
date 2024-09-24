@@ -1,50 +1,36 @@
 name: Deploy to ECR
-
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
 permissions:
-  id-token: write  # Required for requesting the JWT
-  contents: write  # Required for actions/checkout and writing to the repo
-
+  id-token: write # Required for requesting the JWT
+  contents: read  # Required for actions/checkout
 env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1    
-  TARGET_REPOSITORY: coforge-nexus/snyk-eks  # Specify your target repo path
-
 jobs:
   build:
     name: Build and Push Image
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout the Target Repository
+      - name: Checkout
         uses: actions/checkout@v2
-        with:
-          repository: ${{ env.TARGET_REPOSITORY }}  # Specify the repository
-          token: ${{ secrets.GITHUB_TOKEN }}  # Use the default GITHUB_TOKEN
-
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
       - name: Get commit hash
         id: get-commit-hash
         run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
       - name: Get timestamp
         id: get-timestamp
         run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-
       - name: Build, tag, and push the image to Amazon ECR
         id: build-image
         env:
@@ -54,11 +40,3 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Update deployment.yaml with new image tag
-        run: |
-          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.commit_hash }}-${{ env.timestamp }}"
-          sed -i "s|image: .*|image: ${IMAGE_URI}|" manifests/deployment.yaml
-          git add manifests/deployment.yaml
-          git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
-          git push
