@@ -13,7 +13,7 @@ permissions:
 env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1    
-  TARGET_REPOSITORY: coforge-nexus/snyk-eks  # Change this to your target repo path
+  TARGET_REPOSITORY: coforge-nexus/snyk-eks  # Specify your target repo path
 
 jobs:
   build:
