@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # Required for requesting the JWT
-  contents: read  # Required for actions/checkout
+  id-token: write  # Required for requesting the JWT
+  contents: write  # Grant write access to push changes
 
 env:
   ECR_REPOSITORY: nexus-repo
@@ -16,11 +16,14 @@ env:
 
 jobs:
   build:
-    name: Build, Push Image, and Update Deployment
+    name: Build, Push Image, and Update Deployment in snyk-eks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout snyk-eks repository
         uses: actions/checkout@v2
+        with:
+          repository: coforge-nexus/snyk-eks
+          path: snyk-eks
 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
@@ -52,12 +55,12 @@ jobs:
 
       - name: Update deployment.yaml with new image tag
         run: |
-          sed -i "s#image: .*#image: $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.commit_hash }}-${{ env.timestamp }}#" manifests/deployment.yaml
+          sed -i "s#image: .*#image: $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.commit_hash }}-${{ env.timestamp }}#" snyk-eks/manifests/deployment.yaml
 
-      - name: Commit and push updated deployment.yaml
+      - name: Commit and push updated deployment.yaml to snyk-eks repo
         run: |
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
-          git add manifests/deployment.yaml
+          git add snyk-eks/manifests/deployment.yaml
           git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
-          git push
+          git push https://github.com/coforge-nexus/snyk-eks.git HEAD:main
