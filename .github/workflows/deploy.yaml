@@ -49,11 +49,9 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Update deployment.yaml in Deployment Repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use your GitHub token here
         run: |
           # Clone the deployment repo using the GITHUB_TOKEN for authentication
-          git clone https://${{ secrets.GITHUB_TOKEN }}:x-oauth-basic@github.com/coforge-nexus/snyk-eks repo
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/coforge-nexus/snyk-eks repo
           cd repo
           
           # Update the deployment.yaml file
