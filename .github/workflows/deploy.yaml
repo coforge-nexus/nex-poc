@@ -1,4 +1,4 @@
-name: Deploy to ECR and Update deployment.yaml
+name: Deploy to ECR
 
 on:
   push:
@@ -12,21 +12,17 @@ permissions:
 
 env:
   ECR_REPOSITORY: nexus-repo
-  AWS_REGION: eu-west-1
-  TARGET_REPO: coforge-nexus/snyk-eks
-  TARGET_PATH: manifests/deployment.yaml
+  AWS_REGION: eu-west-1    
+  TARGET_FILE: manifests/deployment.yaml
 
 jobs:
   build:
-    name: Build and Push Image
+    name: Build, Push Image to ECR, and Update Deployment YAML
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Target Repo
+      - name: Checkout
         uses: actions/checkout@v2
-        with:
-          repository: ${{ env.TARGET_REPO }}
-          ref: main
 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
@@ -51,25 +47,21 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
-          COMMIT_HASH: ${{ steps.get-commit-hash.outputs.commit_hash }}
-          TIMESTAMP: ${{ steps.get-timestamp.outputs.timestamp }}
+          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          # Ensure both COMMIT_HASH and TIMESTAMP are not empty
-          if [ -z "$COMMIT_HASH" ]; then echo "COMMIT_HASH is empty"; exit 1; fi
-          if [ -z "$TIMESTAMP" ]; then echo "TIMESTAMP is empty"; exit 1; fi
-          
-          IMAGE_TAG=$COMMIT_HASH-$TIMESTAMP
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Update deployment.yaml with new image tag
         run: |
-          sed -i 's|image: .*|image: '"${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.COMMIT_HASH }}-${{ env.TIMESTAMP }}"'|' ${{ env.TARGET_PATH }}
+          sed -i "s|image: .*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" ${{ env.TARGET_FILE }}
 
-      - name: Commit and push changes to deployment.yaml
+      - name: Commit and push changes to GitHub repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
-          git add ${{ env.TARGET_PATH }}
+          git add ${{ env.TARGET_FILE }}
           git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
-          git push
+          git push https://github.com/coforge-nexus/snyk-eks.git HEAD:main
