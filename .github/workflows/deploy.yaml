@@ -1,29 +1,26 @@
 name: Deploy to ECR
-
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
 permissions:
   id-token: write # Required for requesting the JWT
   contents: read  # Required for actions/checkout
 
 env:
   ECR_REPOSITORY: nexus-repo
-  AWS_REGION: eu-west-1    
-  DEPLOYMENT_REPO: coforge-nexus/snyk-eks
-  DEPLOYMENT_FILE: manifests/deployment.yaml
+  AWS_REGION: eu-west-1
+  DEPLOYMENT_FILE: manifests/deployment.yaml  # Path to your deployment file
 
 jobs:
   build:
     name: Build and Push Image
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout ECR Repository
+      - name: Checkout
         uses: actions/checkout@v2
-        
+
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -46,7 +43,6 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
@@ -54,10 +50,10 @@ jobs:
 
       - name: Update deployment.yaml in Deployment Repo
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use your GitHub token here
         run: |
-          # Clone the deployment repo
-          git clone https://github.com/${{ env.DEPLOYMENT_REPO }} repo
+          # Clone the deployment repo using the GITHUB_TOKEN for authentication
+          git clone https://${{ secrets.GITHUB_TOKEN }}:x-oauth-basic@github.com/coforge-nexus/snyk-eks repo
           cd repo
           
           # Update the deployment.yaml file
