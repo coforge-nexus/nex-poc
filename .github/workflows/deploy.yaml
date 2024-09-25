@@ -7,12 +7,9 @@ on:
 permissions:
   id-token: write # Required for requesting the JWT
   contents: read  # Required for actions/checkout
-
 env:
   ECR_REPOSITORY: nexus-repo
-  AWS_REGION: eu-west-1
-  DEPLOYMENT_FILE: manifests/deployment.yaml  # Path to your deployment file
-
+  AWS_REGION: eu-west-1    
 jobs:
   build:
     name: Build and Push Image
@@ -20,48 +17,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
       - name: Get commit hash
         id: get-commit-hash
         run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
       - name: Get timestamp
         id: get-timestamp
         run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-
       - name: Build, tag, and push the image to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Update deployment.yaml in Deployment Repo
-        run: |
-          # Clone the deployment repo using the GITHUB_TOKEN for authentication
-          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/coforge-nexus/snyk-eks repo
-          cd repo
-          
-          # Update the deployment.yaml file
-          sed -i "s|image: .*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" ${{ env.DEPLOYMENT_FILE }}
-          
-          # Commit the changes
-          git config --local user.email "Gandam.manikantha@coforge.com"
-          git config --local user.name "Ubhaskar-coforge"
-          git add ${{ env.DEPLOYMENT_FILE }}
-          git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
-          
-          # Push the changes
-          git push
