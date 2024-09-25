@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: nexus-java
-        image: 442426854264.dkr.ecr.eu-west-1.amazonaws.com/nexus-repo:be0dc56-2024-09-18-08-56
+        image: 442426854264.dkr.ecr.eu-west-1.amazonaws.com/nexus-repo:58ab5f8-2024-09-25-05-13
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
