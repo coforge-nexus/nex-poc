@@ -9,6 +9,7 @@ on:
 permissions:
   id-token: write  # Required for requesting the JWT
   contents: write  # Required for actions/checkout
+  actions: write   # Required for actions
 
 env:
   ECR_REPOSITORY: nexus-repo
