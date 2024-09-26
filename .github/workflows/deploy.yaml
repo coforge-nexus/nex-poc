@@ -15,6 +15,7 @@ env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
   DEPLOYMENT_FILE: manifests/deployment.yaml  # Path to your deployment file
+  OTHER_REPO: coforge-nexus/snyk-eks  # Replace with your target repository
 
 jobs:
   update-deployment:
@@ -58,6 +59,10 @@ jobs:
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
+          # Checkout the other repository
+          git clone https://github.com/${{ env.OTHER_REPO }} other-repo
+          cd other-repo
+
           # Update the deployment.yaml file with the new image
           sed -i "s|image: .*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" ${{ env.DEPLOYMENT_FILE }}
           
@@ -68,4 +73,4 @@ jobs:
           git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
           
           # Push the changes using custom token
-          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/coforge-nexus/snyk-eks.git
+          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
