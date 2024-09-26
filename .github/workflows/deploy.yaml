@@ -1,42 +1,71 @@
-name: Deploy to ECR
+name: Update ECR Image in Deployment YAML
+
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+
 permissions:
-  id-token: write # Required for requesting the JWT
+  id-token: write  # Required for requesting the JWT
   contents: read  # Required for actions/checkout
+  pull-requests: write
+
 env:
   ECR_REPOSITORY: nexus-repo
-  AWS_REGION: eu-west-1    
+  AWS_REGION: eu-west-1
+  DEPLOYMENT_FILE: manifests/deployment.yaml  # Path to your deployment file
+
 jobs:
-  build:
-    name: Build and Push Image
+  update-deployment:
+    name: Build, Push Image, and Update Deployment YAML
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+
       - name: Get commit hash
         id: get-commit-hash
         run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
       - name: Get timestamp
         id: get-timestamp
         run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-      - name: Build, tag, and push the image to Amazon ECR
+
+      - name: Build, Tag, and Push Docker Image to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Update deployment.yaml with New Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Update the deployment.yaml file with the new image
+          sed -i "s|image: .*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" ${{ env.DEPLOYMENT_FILE }}
+          
+          # Commit the changes
+          git config --local user.email "Gandam.manikantha@coforge.com"
+          git config --local user.name "Ubhaskar-coforge"
+          git add ${{ env.DEPLOYMENT_FILE }}
+          git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
+          
+          # Push the changes
+          git push origin main
