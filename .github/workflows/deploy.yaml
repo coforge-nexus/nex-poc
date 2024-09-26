@@ -14,7 +14,6 @@ env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
   DEPLOYMENT_FILE: manifests/deployment.yaml  # Path to your deployment file
-  MY_GITHUB_PAT: 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  # Your token
 
 jobs:
   update-deployment:
@@ -56,6 +55,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
           # Update the deployment.yaml file with the new image
           sed -i "s|image: .*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" ${{ env.DEPLOYMENT_FILE }}
