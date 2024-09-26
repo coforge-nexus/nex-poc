@@ -56,7 +56,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use custom token instead of GITHUB_TOKEN
         run: |
           # Update the deployment.yaml file with the new image
           sed -i "s|image: .*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" ${{ env.DEPLOYMENT_FILE }}
@@ -67,5 +67,5 @@ jobs:
           git add ${{ env.DEPLOYMENT_FILE }}
           git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
           
-          # Push the changes
-          git push origin main
+          # Push the changes using custom token
+          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/coforge-nexus/nex-poc.git
