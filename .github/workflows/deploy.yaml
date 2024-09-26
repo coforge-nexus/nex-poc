@@ -1,4 +1,4 @@
-name: Update ECR Image in Deployment YAML  
+name: Update ECR Image in Deployment YAML
 
 on:
   push:
@@ -12,6 +12,7 @@ permissions:
   actions: write   # Required for actions
 
 env:
+  APP_NAME: nexus-application  # Application name for tagging
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
   DEPLOYMENT_FILE: manifests/deployment.yaml  # Path to your deployment file
@@ -36,19 +37,20 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Get commit hash
-        id: get-commit-hash
-        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-      - name: Get timestamp
-        id: get-timestamp
-        run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+      - name: Get the Current Version from ECR
+        id: get-current-version
+        run: |
+          VERSION=$(aws ecr describe-images --repository-name ${{ env.ECR_REPOSITORY }} --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' --output text)
+          if [[ "$VERSION" == "None" ]]; then
+            VERSION="0"
+          fi
+          echo "version_number=$((VERSION+1))" >> $GITHUB_ENV
 
       - name: Build, Tag, and Push Docker Image to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+          IMAGE_TAG: ${{ env.APP_NAME }}-v${{ env.version_number }}  # Tag format: nexus-application-vX
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -56,7 +58,7 @@ jobs:
       - name: Update deployment.yaml with New Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+          IMAGE_TAG: ${{ env.APP_NAME }}-v${{ env.version_number }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
           # Checkout the other repository
