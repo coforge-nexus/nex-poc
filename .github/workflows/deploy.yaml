@@ -12,11 +12,11 @@ permissions:
   actions: write   # Required for actions
 
 env:
-  APP_NAME: nexus-application  # Application name for tagging
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
   DEPLOYMENT_FILE: manifests/deployment.yaml  # Path to your deployment file
   OTHER_REPO: coforge-nexus/snyk-eks  # Replace with your target repository
+  APP_NAME: nexus-application
 
 jobs:
   update-deployment:
@@ -41,16 +41,25 @@ jobs:
         id: get-current-version
         run: |
           VERSION=$(aws ecr describe-images --repository-name ${{ env.ECR_REPOSITORY }} --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' --output text)
-          if [[ "$VERSION" == "None" ]]; then
-            VERSION="0"
+
+          # Check if VERSION is a number and increment or start at 1
+          if [[ "$VERSION" =~ ^[0-9]+$ ]]; then
+            echo "version_number=$((VERSION+1))" >> $GITHUB_ENV
+          else
+            echo "version_number=1" >> $GITHUB_ENV
           fi
-          echo "version_number=$((VERSION+1))" >> $GITHUB_ENV
+
+      - name: Get commit hash and timestamp
+        id: get-commit-info
+        run: |
+          echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
 
       - name: Build, Tag, and Push Docker Image to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.APP_NAME }}-v${{ env.version_number }}  # Tag format: nexus-application-vX
+          IMAGE_TAG: ${{ env.APP_NAME }}-${{ env.version_number }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -58,7 +67,7 @@ jobs:
       - name: Update deployment.yaml with New Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.APP_NAME }}-v${{ env.version_number }}
+          IMAGE_TAG: ${{ env.APP_NAME }}-${{ env.version_number }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
           # Checkout the other repository
