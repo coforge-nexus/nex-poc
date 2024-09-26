@@ -1,4 +1,4 @@
-name: Update ECR Image in Deployment YAML  
+name: Update ECR Image in Deployment YAML 
  
 on:
   push:
