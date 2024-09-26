@@ -68,4 +68,4 @@ jobs:
           git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
           
           # Push the changes using custom token
-          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/coforge-nexus/nex-poc.git
+          git push https://$MY_GITHUB_PAT@github.com/coforge-nexus/nex-poc.git
