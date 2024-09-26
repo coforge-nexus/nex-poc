@@ -8,8 +8,7 @@ on:
 
 permissions:
   id-token: write  # Required for requesting the JWT
-  contents: read    # Required for actions/checkout
-  pull-requests: write
+  contents: write  # Allow writing to the repository contents
 
 env:
   ECR_REPOSITORY: nexus-repo
@@ -68,4 +67,4 @@ jobs:
           git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
           
           # Push the changes using custom token
-          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/coforge-nexus/nex-poc.git
+          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/coforge-nexus/snyk-eks.git
