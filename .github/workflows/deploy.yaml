@@ -1,4 +1,4 @@
-name: Update ECR Image in Deployment YAML 
+name: Update ECR Image in Deployment YAML
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 permissions:
   id-token: write  # Required for requesting the JWT
   contents: write  # Required for actions/checkout
-  # actions: write   # Required for actions
+  actions: write   # Required for actions
 
 env:
   ECR_REPOSITORY: nexus-repo
@@ -41,7 +41,6 @@ jobs:
         id: get-current-version
         run: |
           VERSION=$(aws ecr describe-images --repository-name ${{ env.ECR_REPOSITORY }} --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' --output text)
-
           # Check if VERSION is a number and increment or start at 1
           if [[ "$VERSION" =~ ^[0-9]+$ ]]; then
             echo "version_number=$((VERSION+1))" >> $GITHUB_ENV
@@ -76,12 +75,18 @@ jobs:
 
           # Update the deployment.yaml file with the new image
           sed -i "s|image: .*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" ${{ env.DEPLOYMENT_FILE }}
-          
+
+          # Check if there are any changes
+          if git diff --exit-code; then
+            echo "No changes to commit. Exiting..."
+            exit 0
+          fi
+
           # Commit the changes
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
           git add ${{ env.DEPLOYMENT_FILE }}
           git commit -m "Update deployment.yaml with new image tag $IMAGE_TAG"
-          
+
           # Push the changes using custom token
           git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
