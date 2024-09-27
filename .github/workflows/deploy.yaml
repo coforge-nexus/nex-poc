@@ -1,4 +1,4 @@
-name: Update ECR Image in Values YAML
+name: Update ECR Image in Values YAML 
 
 on:
   push:
@@ -18,7 +18,7 @@ env:
   OTHER_REPO: coforge-nexus/helmcharts  # Replace with your target repository
 
 jobs:
-  update-values:
+  update-deployment:
     name: Build, Push Image, and Update Values YAML
     runs-on: ubuntu-latest
 
@@ -59,8 +59,8 @@ jobs:
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
-          # Checkout the other repository
-          git clone https://github.com/${{ env.OTHER_REPO }} other-repo
+          # Checkout the other repository using the PAT for authentication
+          git clone https://$MY_GITHUB_PAT@github.com/${{ env.OTHER_REPO }} other-repo
           cd other-repo
 
           # Update the values.yaml file with the new image
@@ -70,5 +70,5 @@ jobs:
           git config --local user.name "Ubhaskar-coforge"
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
-          # Push the changes using custom token
-          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
+          # Push the changes using the PAT
+          git push https://$MY_GITHUB_PAT@github.com/${{ env.OTHER_REPO }}.git
