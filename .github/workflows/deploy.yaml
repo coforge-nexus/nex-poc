@@ -1,4 +1,4 @@
-name: Update ECR Image in Values YAML
+name: Update ECR Image in Values YAML 
 
 on:
   push:
