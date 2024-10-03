@@ -14,7 +14,7 @@ permissions:
 env:
   ECR_REPOSITORY: nexus-repo                       # Your ECR repository name
   AWS_REGION: eu-west-1                             # Your AWS region
-  VALUES_FILE: helm/nexus-application/values.yaml  # Path to your values.yaml file
+  VALUES_FILE: nexus-application/values.yaml       # Path to your values.yaml file
   TARGET_REPO: coforge-nexus/helmcharts            # Your target repository
   HELM_RELEASE: nexus-application                   # Your Helm release name
   HELM_CHART_PATH: helm/nexus-application           # Path to your Helm chart
