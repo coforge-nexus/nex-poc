@@ -16,7 +16,7 @@ env:
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml
   TARGET_REPO: coforge-nexus/helmcharts
-  IMAGE_TAG: v1  # Change this to v2, v3, etc., as needed
+  VERSION: v1  # Change this to v2, v3, etc., as needed
 
 jobs:
   update-deployment:
@@ -39,9 +39,10 @@ jobs:
       - name: Build and Push Docker Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ env.ECR_REPOSITORY }}:${{ env.VERSION }}  # Set the image tag format here
         run: |
-          docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} -f docker/Dockerfile .
-          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          docker build -t $IMAGE_TAG -f docker/Dockerfile .
+          docker push $IMAGE_TAG
 
       - name: Update values.yaml and Push to Target Repo
         env:
@@ -49,9 +50,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           git clone https://$MY_GITHUB_PAT@github.com/${{ env.TARGET_REPO }} target-repo
-          sed -i "s|repository: .*|repository: $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}|; s|tag: .*|tag: $IMAGE_TAG|" target-repo/${{ env.VALUES_FILE }}
+          sed -i "s|repository: .*|repository: $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}|; s|tag: .*|tag: ${{ env.VERSION }}|" target-repo/${{ env.VALUES_FILE }}
           cd target-repo
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
-          git commit -am "Update values.yaml with new image tag $IMAGE_TAG"
+          git commit -am "Update values.yaml with new image tag ${{ env.VERSION }}"
           git push
