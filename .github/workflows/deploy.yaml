@@ -15,7 +15,7 @@ env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file
-  OTHER_REPO: coforge-nexus/helmcharts  # Replace with your target repository
+  TARGET_REPO: coforge-nexus/helmcharts  # Replace with your target repository
 
 jobs:
   update-deployment:
@@ -39,7 +39,7 @@ jobs:
         id: vars
         run: |
           echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+          echo "timestamp=$(date +'%Y-%m-%d-%H-%M' | tr ':' '-')" >> $GITHUB_ENV
 
       - name: Build, Tag, and Push Docker Image to ECR
         run: |
@@ -48,10 +48,10 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Checkout the Other Repository (Helm Charts)
+      - name: Checkout the Target Repository (Helm Charts)
         uses: actions/checkout@v3
         with:
-          repository: ${{ env.OTHER_REPO }}
+          repository: ${{ env.TARGET_REPO }}
           token: ${{ secrets.MY_GITHUB_PAT }}
 
       - name: Update Values YAML with New Image
