@@ -16,6 +16,7 @@ env:
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml
   TARGET_REPO: coforge-nexus/helmcharts
+  IMAGE_TAG: v1  # Change this to v2, v3, etc., as needed
 
 jobs:
   update-deployment:
@@ -35,15 +36,8 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
         id: login-ecr
 
-      - name: Get commit hash and timestamp
-        id: vars
-        run: |
-          echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-
       - name: Build and Push Docker Image
         env:
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} -f docker/Dockerfile .
@@ -51,7 +45,6 @@ jobs:
 
       - name: Update values.yaml and Push to Target Repo
         env:
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
