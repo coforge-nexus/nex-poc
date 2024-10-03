@@ -14,10 +14,11 @@ permissions:
 env:
   ECR_REPOSITORY: nexus-repo                       # Your ECR repository name
   AWS_REGION: eu-west-1                             # Your AWS region
-  VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file
-  TARGET_REPO: coforge-nexus/helmcharts            # Replace with your target repository
+  VALUES_FILE: helm/nexus-application/values.yaml  # Path to your values.yaml file
+  TARGET_REPO: coforge-nexus/helmcharts            # Your target repository
   HELM_RELEASE: nexus-application                   # Your Helm release name
   HELM_CHART_PATH: helm/nexus-application           # Path to your Helm chart
+  HELM_REPO_URL: https://github.com/coforge-nexus/helmcharts  # URL of your Helm chart repository
 
 jobs:
   update-deployment:
@@ -64,14 +65,8 @@ jobs:
           git clone https://$MY_GITHUB_PAT@github.com/${{ env.TARGET_REPO }} target-repo
           cd target-repo
 
-          # Check if values.yaml file exists at the specified path
-          if [ -f "${{ env.VALUES_FILE }}" ]; then
-              # Update the values.yaml file with the new image
-              sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
-          else
-              echo "Error: values.yaml file does not exist at path ${{ env.VALUES_FILE }}."
-              exit 1
-          fi
+          # Update the values.yaml file with the new image
+          sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
 
           # Commit the changes
           git config --local user.email "Gandam.manikantha@coforge.com"
@@ -82,7 +77,12 @@ jobs:
           # Push the changes using the PAT
           git push https://$MY_GITHUB_PAT@github.com/${{ env.TARGET_REPO }}.git
 
-      - name: Upgrade Release Using Helm (Optional)
+      - name: Add Helm Repository
+        run: |
+          helm repo add my-helm-repo ${{ env.HELM_REPO_URL }}  # Add your Helm repo
+          helm repo update  # Update Helm repositories
+
+      - name: Upgrade Release Using Helm
         env:
           HELM_KUBECONFIG: ${{ secrets.HELM_KUBECONFIG }} # Kubeconfig file (if needed)
           IMAGE_TAG: ${{ env.COMMIT_HASH }}-${{ env.TIMESTAMP }}
@@ -90,10 +90,9 @@ jobs:
           HELM_RELEASE: ${{ env.HELM_RELEASE }}
           HELM_CHART_PATH: ${{ env.HELM_CHART_PATH }}
         run: |
-          # Optional: Add your Kubernetes context if necessary
+          # Add your Kubernetes context if necessary
           # kubectl config use-context <your-kube-context>
 
-          helm repo update  # Update Helm repositories
           helm upgrade --install $HELM_RELEASE $HELM_CHART_PATH \
             --set image.tag=${IMAGE_TAG} \
             --set image.repository=${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}  # Deploy using Helm
