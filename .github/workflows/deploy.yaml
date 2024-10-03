@@ -64,8 +64,14 @@ jobs:
           git clone https://$MY_GITHUB_PAT@github.com/${{ env.TARGET_REPO }} target-repo
           cd target-repo
 
-          # Update the values.yaml file with the new image
-          sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
+          # Check if values.yaml file exists at the specified path
+          if [ -f "${{ env.VALUES_FILE }}" ]; then
+              # Update the values.yaml file with the new image
+              sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
+          else
+              echo "Error: values.yaml file does not exist at path ${{ env.VALUES_FILE }}."
+              exit 1
+          fi
 
           # Commit the changes
           git config --local user.email "Gandam.manikantha@coforge.com"
@@ -84,7 +90,7 @@ jobs:
           HELM_RELEASE: ${{ env.HELM_RELEASE }}
           HELM_CHART_PATH: ${{ env.HELM_CHART_PATH }}
         run: |
-          # Add your Kubernetes context if necessary
+          # Optional: Add your Kubernetes context if necessary
           # kubectl config use-context <your-kube-context>
 
           helm repo update  # Update Helm repositories
