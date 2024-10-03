@@ -1,98 +1,74 @@
-name: Build, Push to ECR, and Update Helm Values
-
+name: Update ECR Image in Values YAML
+ 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
+ 
 permissions:
   id-token: write  # Required for requesting the JWT
-  contents: write   # Required for actions/checkout
-  actions: write    # Required for actions to update the repository
-
+  contents: write  # Required for actions/checkout
+  actions: write   # Required for actions
+ 
 env:
-  ECR_REPOSITORY: nexus-repo                       # Your ECR repository name
-  AWS_REGION: eu-west-1                             # Your AWS region
-  VALUES_FILE: nexus-application/values.yaml       # Path to your values.yaml file
-  TARGET_REPO: coforge-nexus/helmcharts            # Your target repository
-  HELM_RELEASE: nexus-application                   # Your Helm release name
-  HELM_CHART_PATH: helm/nexus-application           # Path to your Helm chart
-  HELM_REPO_URL: https://github.com/coforge-nexus/helmcharts  # URL of your Helm chart repository
-
+  ECR_REPOSITORY: nexus-repo
+  AWS_REGION: eu-west-1
+  VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file
+  TARGET_REPO: coforge-nexus/helmcharts  # Replace with your target repository
+ 
 jobs:
   update-deployment:
     name: Build, Push Image, and Update Values YAML
     runs-on: ubuntu-latest
-
+ 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-
+ 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Role ARN to assume for AWS access
-          aws-region: ${{ env.AWS_REGION }}            # AWS region
-
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+ 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
+ 
       - name: Get commit hash
         id: get-commit-hash
-        run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+ 
       - name: Get timestamp
         id: get-timestamp
-        run: echo "TIMESTAMP=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-
+        run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+ 
       - name: Build, Tag, and Push Docker Image to Amazon ECR
+        id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.COMMIT_HASH }}-${{ env.TIMESTAMP }}
+          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
+ 
       - name: Update values.yaml with New Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.COMMIT_HASH }}-${{ env.TIMESTAMP }}
-          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Your GitHub Personal Access Token from secrets
+          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
           # Checkout the target repository using the PAT for authentication
           git clone https://$MY_GITHUB_PAT@github.com/${{ env.TARGET_REPO }} target-repo
           cd target-repo
-
+ 
           # Update the values.yaml file with the new image
           sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
-
           # Commit the changes
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
-
           # Push the changes using the PAT
           git push https://$MY_GITHUB_PAT@github.com/${{ env.TARGET_REPO }}.git
-
-      - name: Add Helm Repository
-        run: |
-          helm repo add my-helm-repo ${{ env.HELM_REPO_URL }}  # Add your Helm repo
-          helm repo update  # Update Helm repositories
-
-      - name: Upgrade Release Using Helm
-        env:
-          HELM_KUBECONFIG: ${{ secrets.HELM_KUBECONFIG }} # Kubeconfig file (if needed)
-          IMAGE_TAG: ${{ env.COMMIT_HASH }}-${{ env.TIMESTAMP }}
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          HELM_RELEASE: ${{ env.HELM_RELEASE }}
-          HELM_CHART_PATH: ${{ env.HELM_CHART_PATH }}
-        run: |
-          # Add your Kubernetes context if necessary
-          # kubectl config use-context <your-kube-context>
-
-          helm upgrade --install $HELM_RELEASE $HELM_CHART_PATH \
-            --set image.tag=${IMAGE_TAG} \
-            --set image.repository=${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}  # Deploy using Helm
