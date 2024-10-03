@@ -1,4 +1,4 @@
-name: Update ECR Image in Values YAML 
+name: Update ECR Image in Values YAML
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write  # Required for requesting the JWT
-  contents: write  # Required for actions/checkout
-  actions: write   # Required for actions
+  id-token: write
+  contents: write
+  actions: write
 
 env:
   ECR_REPOSITORY: nexus-repo
@@ -23,52 +23,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout the Current Repository
         uses: actions/checkout@v3
 
-      - name: Configure AWS credentials from OIDC
+      - name: Configure AWS Credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Get commit hash
-        id: get-commit-hash
-        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-      - name: Get timestamp
-        id: get-timestamp
-        run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-
-      - name: Build, Tag, and Push Docker Image to Amazon ECR
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+      - name: Get Commit Hash and Timestamp
+        id: vars
         run: |
+          echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+
+      - name: Build, Tag, and Push Docker Image to ECR
+        run: |
+          IMAGE_TAG=${{ env.commit_hash }}-${{ env.timestamp }}
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Update values.yaml with New Image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
-          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
-        run: |
-          # Checkout the other repository using the PAT for authentication
-          git clone https://$MY_GITHUB_PAT@github.com/${{ env.OTHER_REPO }} other-repo
-          cd other-repo
+      - name: Checkout the Other Repository (Helm Charts)
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.OTHER_REPO }}
+          token: ${{ secrets.MY_GITHUB_PAT }}
 
-          # Update the values.yaml file with the new image
+      - name: Update Values YAML with New Image
+        run: |
+          IMAGE_TAG=${{ env.commit_hash }}-${{ env.timestamp }}
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
-          # Commit the changes
-          git config --local user.email "Gandam.manikantha@coforge.com"
-          git config --local user.name "Ubhaskar-coforge"
+
+      - name: Commit and Push Changes
+        run: |
+          git config user.name "Ubhaskar-coforge"
+          git config user.email "Gandam.manikantha@coforge.com"
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
-          # Push the changes using the PAT
-          git push https://$MY_GITHUB_PAT@github.com/${{ env.OTHER_REPO }}.git
+          git push
