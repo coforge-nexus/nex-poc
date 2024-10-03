@@ -45,6 +45,7 @@ jobs:
         run: |
           IMAGE_TAG=${{ env.commit_hash }}-${{ env.timestamp }}
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
@@ -67,3 +68,4 @@ jobs:
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
           git push
+
