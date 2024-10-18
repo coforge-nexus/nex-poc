@@ -42,8 +42,10 @@ jobs:
         run: |
           echo "Listing files in the root directory:"
           ls -la
+          echo "Listing files in the nexus-application directory:"
+          ls -la nexus-application  # This will confirm the path to values.yaml
           echo "Listing files in the my-helm-chart directory:"
-          ls -la path/to/my-helm-chart  # Update this path as necessary
+          ls -la my-helm-chart  # Ensure your Helm chart exists here
 
       - name: Get commit hash
         id: get-commit-hash
@@ -65,7 +67,7 @@ jobs:
 
       - name: Package Helm Chart
         run: |
-          helm package path/to/my-helm-chart --version ${{ env.CHART_VERSION }}  # Update this path
+          helm package my-helm-chart --version ${{ env.CHART_VERSION }}  # Adjust this if needed
 
       - name: Push Helm Chart to ECR
         env:
