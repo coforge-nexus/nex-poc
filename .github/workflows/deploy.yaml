@@ -1,4 +1,4 @@
-name: Update ECR Image and Package Helm Chart
+name: Update ECR Image in Values YAML
 
 on:
   push:
@@ -14,9 +14,9 @@ permissions:
 env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
-  VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file
+  VALUES_FILE: test-helm/values.yaml  # Updated path to values.yaml
   TARGET_REPO: coforge-nexus/helmcharts  # Replace with your target repository
-  HELM_CHART_PATH: test-helm  # Path to your Helm chart directory
+  HELM_CHART_PATH: test-helm  # Path to your Helm chart
 
 jobs:
   update-deployment:
@@ -30,7 +30,7 @@ jobs:
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Use your OIDC role ARN
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -55,10 +55,9 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Package Helm Chart
-        env:
-          HELM_CHART_PATH: ${{ env.HELM_CHART_PATH }}
         run: |
-          helm package $HELM_CHART_PATH
+          cd ${{ env.HELM_CHART_PATH }}  # Change to the helm chart directory
+          helm package .  # Package the helm chart in the current directory
 
       - name: Update values.yaml with New Image
         env:
@@ -73,7 +72,7 @@ jobs:
           # Update the values.yaml file with the new image
           sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
           # Commit the changes
-          git config --local user.email "Gandam.manikanthan@coforge.com"
+          git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
