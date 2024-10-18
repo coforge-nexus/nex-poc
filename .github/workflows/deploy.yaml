@@ -42,8 +42,8 @@ jobs:
         run: |
           echo "Listing files in the root directory:"
           ls -la
-          echo "Listing files in the docker directory:"
-          ls -la docker  # Adjust this if your Dockerfile is in a different directory
+          echo "Listing files in the my-helm-chart directory:"
+          ls -la path/to/my-helm-chart  # Update this path as necessary
 
       - name: Get commit hash
         id: get-commit-hash
@@ -65,7 +65,7 @@ jobs:
 
       - name: Package Helm Chart
         run: |
-          helm package ${{ env.CHART_NAME }} --version ${{ env.CHART_VERSION }}
+          helm package path/to/my-helm-chart --version ${{ env.CHART_VERSION }}  # Update this path
 
       - name: Push Helm Chart to ECR
         env:
