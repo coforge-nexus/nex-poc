@@ -1,4 +1,4 @@
-name: Update ECR Image in Values YAML 
+name: Update ECR Image and Package Helm Chart
 
 on:
   push:
@@ -16,27 +16,20 @@ env:
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file
   TARGET_REPO: coforge-nexus/helmcharts  # Replace with your target repository
-  CHART_VERSION: 0.1.0  # Set your desired chart version
+  HELM_CHART_PATH: test-helm  # Path to your Helm chart directory
 
 jobs:
   update-deployment:
-    name: Build, Push Image, Package Helm Chart, and Update Values YAML
+    name: Build, Push Image, and Update Values YAML
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # List directory contents for debugging
-      - name: List Files
-        run: |
-          echo "Listing files in the repository:"
-          ls -R
-
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -61,7 +54,10 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Package Helm Chart
-        run: helm package ./test-helm --version ${{ env.CHART_VERSION }}  # Path to your Helm chart
+        env:
+          HELM_CHART_PATH: ${{ env.HELM_CHART_PATH }}
+        run: |
+          helm package $HELM_CHART_PATH
 
       - name: Update values.yaml with New Image
         env:
@@ -75,12 +71,10 @@ jobs:
 
           # Update the values.yaml file with the new image
           sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|; s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
-
           # Commit the changes
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
-          
           # Push the changes using the PAT
           git push https://$MY_GITHUB_PAT@github.com/${{ env.TARGET_REPO }}.git
