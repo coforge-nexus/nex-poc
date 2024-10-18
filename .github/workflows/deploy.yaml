@@ -61,7 +61,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Package Helm Chart
-        run: helm package ./test-helm --version ${{ env.CHART_VERSION }}  # Ensure this path is correct
+        run: helm package ./test-helm --version ${{ env.CHART_VERSION }}  # Path to your Helm chart
 
       - name: Update values.yaml with New Image
         env:
