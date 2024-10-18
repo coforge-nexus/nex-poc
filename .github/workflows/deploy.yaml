@@ -14,7 +14,7 @@ permissions:
 env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
-  VALUES_FILE: test-helm/values.yaml  # Updated path to values.yaml
+  VALUES_FILE: test-helm/values.yaml  # Path to your values.yaml file
   TARGET_REPO: coforge-nexus/helmcharts  # Replace with your target repository
   HELM_CHART_PATH: test-helm  # Path to your Helm chart
 
@@ -26,6 +26,9 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+
+      - name: Verify test-helm Directory Exists
+        run: ls -la ${{ env.HELM_CHART_PATH }} || echo "Directory not found"
 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
