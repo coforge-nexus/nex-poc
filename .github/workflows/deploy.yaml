@@ -57,8 +57,8 @@ jobs:
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
-          # Checkout the other repository
-          git clone https://github.com/${{ env.OTHER_REPO }} other-repo
+          # Checkout the other repository with the token
+          git clone https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git other-repo
           cd other-repo
           
           # Update the values.yaml file with the new image
@@ -71,5 +71,5 @@ jobs:
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
 
-          # Push the changes using custom token
+          # Push the changes using the token
           git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
