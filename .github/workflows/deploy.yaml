@@ -1,4 +1,4 @@
-name: Update ECR Image in values.yaml
+name: Update ECR Image in values.yaml and Push Helm Chart to ECR
 on:
   push:
     branches:
@@ -6,19 +6,21 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write  # Required for requesting the JWT
-  contents: write  # Required for actions/checkout
-  actions: write   # Required for actions
+  id-token: write
+  contents: write
+  actions: write
 
 env:
   ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
-  VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file in the other repo
-  OTHER_REPO: coforge-nexus/helmcharts  # Replace with your target repository
+  VALUES_FILE: nexus-application/values.yaml
+  OTHER_REPO: coforge-nexus/helmcharts  # Target repository
+  HELM_CHART_DIR: helm-test-chart  # Directory of your Helm chart
+  HELM_ECR_REPOSITORY: 442426854264.dkr.ecr.eu-west-1.amazonaws.com/helm-test-chart  # ECR URI for Helm
 
 jobs:
   update-deployment:
-    name: Build, Push Image, and Update values.yaml
+    name: Build, Push Image, Update values.yaml, and Push Helm Chart
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -55,7 +57,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
-          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
+          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}
         run: |
           # Checkout the other repository with the token
           git clone https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git other-repo
@@ -73,3 +75,24 @@ jobs:
 
           # Push the changes using the token
           git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Log in to ECR for Helm
+        env:
+          HELM_ECR_REPOSITORY: ${{ env.HELM_ECR_REPOSITORY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | helm registry login --username AWS --password-stdin $HELM_ECR_REPOSITORY
+
+      - name: Package Helm Chart
+        run: |
+          helm package ${{ env.HELM_CHART_DIR }}
+
+      - name: Push Helm Chart to ECR
+        env:
+          HELM_ECR_REPOSITORY: ${{ env.HELM_ECR_REPOSITORY }}
+        run: |
+          helm push ${{ env.HELM_CHART_DIR }}-0.1.0.tgz oci://$HELM_ECR_REPOSITORY
