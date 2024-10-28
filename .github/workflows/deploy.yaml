@@ -1,4 +1,5 @@
 name: Update ECR Image in values.yaml and Push Helm Chart to ECR
+
 on:
   push:
     branches:
@@ -15,7 +16,6 @@ env:
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml
   OTHER_REPO: coforge-nexus/helmcharts
-  HELM_CHART_DIR: helm-test-chart  # <-- Define the Helm chart directory here
   HELM_ECR_REPOSITORY: 442426854264.dkr.ecr.eu-west-1.amazonaws.com/helm-test-chart
 
 jobs:
@@ -72,16 +72,14 @@ jobs:
 
           git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
 
-      - name: Install Helm
+      - name: Package Helm Chart on Remote Server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key
         run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      - name: Verify Helm Chart Directory
-        run: |
-          if [ ! -d "${{ env.HELM_CHART_DIR }}" ]; then
-            echo "Helm chart directory ${{ env.HELM_CHART_DIR }} not found."
-            exit 1
-          fi
+          echo "$SSH_PRIVATE_KEY" > id_rsa
+          chmod 600 id_rsa
+          ssh -i id_rsa -o StrictHostKeyChecking=no user@your-server-ip "helm package /home/ubuntu/helm-test-chart"
+          rm id_rsa
 
       - name: Log in to ECR for Helm
         env:
@@ -90,12 +88,8 @@ jobs:
         run: |
           aws ecr get-login-password --region $AWS_REGION | helm registry login --username AWS --password-stdin $HELM_ECR_REPOSITORY
 
-      - name: Package Helm Chart
-        run: |
-          helm package ${{ env.HELM_CHART_DIR }}
-
       - name: Push Helm Chart to ECR
         env:
           HELM_ECR_REPOSITORY: ${{ env.HELM_ECR_REPOSITORY }}
         run: |
-          helm push ${{ env.HELM_CHART_DIR }}-0.1.0.tgz oci://$HELM_ECR_REPOSITORY
+          helm push /home/ubuntu/helm-test-chart-0.1.0.tgz oci://$HELM_ECR_REPOSITORY  # Adjust this path based on where the packaged chart is located
