@@ -12,11 +12,11 @@ permissions:
   actions: write   # Required for actions
 
 env:
-  ECR_REPOSITORY: nexus-repo
-  AWS_REGION: eu-west-1
+  ECR_REPOSITORY: nexus-repo  # Your ECR repository name
+  AWS_REGION: eu-west-1        # Your AWS region
   VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file in the other repo
-  OTHER_REPO: coforge-nexus/helmcharts  # Replace with your target repository
-  HELM_ECR_REPOSITORY: ***.dkr.ecr.eu-west-1.amazonaws.com/helm-test-chart  # Update with your ECR repo
+  OTHER_REPO: coforge-nexus/helmcharts  # Target repository for values.yaml
+  HELM_ECR_REPOSITORY: ***.dkr.ecr.eu-west-1.amazonaws.com/helm-test-chart  # ECR repository URL
   AWS_DEFAULT_REGION: eu-west-1
 
 jobs:
@@ -58,7 +58,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
-          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
+          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your GitHub Personal Access Token from secrets
         run: |
           # Checkout the other repository with the token
           git clone https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git other-repo
@@ -90,7 +90,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
-          HELM_CHART_NAME: helm-test-chart  # Change this to the name of your Helm chart
+          HELM_CHART_NAME: helm-test-chart  # Name of your Helm chart
         run: |
           # Assuming the Helm chart is packaged and stored in a specific location
           # Adjust the path according to where the chart is packaged
@@ -100,5 +100,5 @@ jobs:
           # Copy the chart file to the local machine (assuming the chart was packaged on the remote server)
           scp -i id_rsa -o StrictHostKeyChecking=no ubuntu@52.214.201.164:$CHART_PATH .
           
-          # Tag the Helm chart with the ECR repository and push it
+          # Push the Helm chart to ECR
           aws ecr put-image --repository-name $ECR_REPOSITORY --image-tag $IMAGE_TAG --image-manifest file://$CHART_FILE
