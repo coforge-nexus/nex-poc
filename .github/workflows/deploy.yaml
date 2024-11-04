@@ -13,7 +13,7 @@ permissions:
 
 env:
   ECR_DOCKER_REPOSITORY: nexus-repo
-  ECR_HELM_REPOSITORY: test-helm  # Updated to use 'test-helm' for the Helm repository
+  ECR_HELM_REPOSITORY: helm-test-chart  # Updated to your specified ECR Helm repository
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml
   OTHER_REPO: coforge-nexus/helmcharts
@@ -30,8 +30,10 @@ jobs:
         run: |
           echo "Root directory:"
           ls -al
-          echo "Recursive directory listing:"
-          find . -type d -print  # Shows directories only
+          echo "Helmcharts directory:"
+          ls -al ./helmcharts
+          echo "Test Helm directory:"
+          ls -al ./helmcharts/test-helm
 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
