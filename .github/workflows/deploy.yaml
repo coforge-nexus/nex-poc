@@ -69,8 +69,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          # Adjust the path to your actual Helm chart directory
-          helm package ./helmcharts/test-helm --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
+          # Adjust the path to the actual Helm chart directory
+          helm package ./test-helm --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
           helm push test-helm-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
 
       - name: Update values.yaml with New Image Tag
