@@ -55,7 +55,7 @@ jobs:
 
       - name: Clone Helmcharts Repository
         run: |
-          git clone https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git helmcharts
+          git clone https://${{ secrets.MY_GITHUB_PAT }}:x-oauth-basic@github.com/coforge-nexus/helmcharts.git helmcharts
 
       - name: Install Helm
         run: |
@@ -77,7 +77,7 @@ jobs:
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}
         run: |
-          git clone https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git other-repo
+          git clone https://${{ secrets.MY_GITHUB_PAT }}:x-oauth-basic@github.com/coforge-nexus/helmcharts.git other-repo
           cd other-repo
           sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_DOCKER_REPOSITORY|" ${{ env.VALUES_FILE }}
           sed -i "s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
@@ -85,4 +85,4 @@ jobs:
           git config --local user.name "Ubhaskar-coforge"
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
-          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
+          git push https://${{ secrets.MY_GITHUB_PAT }}:x-oauth-basic@github.com/coforge-nexus/helmcharts.git
