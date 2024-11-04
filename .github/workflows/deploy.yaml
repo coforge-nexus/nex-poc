@@ -55,7 +55,7 @@ jobs:
 
       - name: Clone Helmcharts Repository
         run: |
-          git clone https://github.com/${{ env.OTHER_REPO }}.git helmcharts
+          git clone https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git helmcharts
 
       - name: Install Helm
         run: |
