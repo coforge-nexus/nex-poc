@@ -77,12 +77,16 @@ jobs:
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
           MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}
         run: |
+          # Clone the other repository to update values.yaml
           git clone https://${{ secrets.MY_GITHUB_PAT }}:x-oauth-basic@github.com/coforge-nexus/helmcharts.git other-repo
           cd other-repo
+          # Update the values.yaml file
           sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_DOCKER_REPOSITORY|" ${{ env.VALUES_FILE }}
           sed -i "s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
+          # Configure git user
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
+          # Commit and push changes
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
           git push https://${{ secrets.MY_GITHUB_PAT }}:x-oauth-basic@github.com/coforge-nexus/helmcharts.git
