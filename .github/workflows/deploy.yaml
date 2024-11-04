@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: List Files in Repository (Debugging Step)
-        run: ls -R
+        run: ls -R  # This will help locate the Helm chart path
 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
@@ -65,8 +65,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          # Adjust the path here to match your Helm chart location
-          helm package nexus-application --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
+          # Adjust the path to match your Helm chart location based on the List Files output
+          helm package path/to/nexus-application --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
           helm push nexus-application-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
 
       - name: Update values.yaml with New Image Tag
