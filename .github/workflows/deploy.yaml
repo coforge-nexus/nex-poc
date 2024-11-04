@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write  # Required for requesting the JWT
-  contents: write  # Required for actions/checkout
-  actions: write   # Required for actions
+  id-token: write
+  contents: write
+  actions: write
 
 env:
-  ECR_DOCKER_REPOSITORY: nexus-repo  # Your Docker image ECR repo
-  ECR_HELM_REPOSITORY: helm-test-chart  # Your Helm chart ECR repo
+  ECR_DOCKER_REPOSITORY: nexus-repo
+  ECR_HELM_REPOSITORY: test-helm  # Updated to use 'test-helm' for the Helm repository
   AWS_REGION: eu-west-1
-  VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file
-  OTHER_REPO: coforge-nexus/helmcharts  # Replace with your target repository
+  VALUES_FILE: nexus-application/values.yaml
+  OTHER_REPO: coforge-nexus/helmcharts
 
 jobs:
   deploy:
@@ -26,8 +26,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: List Files in Repository (Debugging Step)
-        run: ls -R  # This will help locate the Helm chart path
+      - name: List All Files and Directories (Enhanced Debugging)
+        run: |
+          echo "Root directory:"
+          ls -al
+          echo "Recursive directory listing:"
+          find . -type d -print  # Shows directories only
 
       - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
@@ -65,9 +69,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          # Adjust the path to match your Helm chart location based on the List Files output
-          helm package path/to/nexus-application --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
-          helm push nexus-application-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
+          # Adjust the path to your actual Helm chart directory
+          helm package ./helmcharts/test-helm --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
+          helm push test-helm-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
 
       - name: Update values.yaml with New Image Tag
         env:
