@@ -62,13 +62,23 @@ jobs:
         run: |
           curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      - name: Package and Push Helm Chart to ECR as OCI
+      - name: Package Helm Chart
+        env:
+          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+        run: |
+          helm package ./helmcharts/test-helm --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
+
+      - name: Login to Helm Registry
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          echo "$(aws ecr get-login-password --region ${{ env.AWS_REGION }})" | helm registry login -u AWS --password-stdin $ECR_REGISTRY
+
+      - name: Push Helm Chart to ECR
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          helm registry login -u AWS --password $(aws ecr get-login-password --region ${{ env.AWS_REGION }}) $ECR_REGISTRY
-          helm package ./helmcharts/test-helm --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
           helm push test-helm-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
 
       - name: Update values.yaml with New Image Tag
