@@ -17,7 +17,7 @@ env:
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml
   TARGET_REPO: coforge-nexus/helmcharts
-  HELM_CHART_URL: https://github.com/coforge-nexus/helmcharts/raw/main/helm-test-chart/helm-test-chart-0.1.0.tgz
+  HELM_CHART_URL: https://raw.githubusercontent.com/coforge-nexus/helmcharts/main/helm-test-chart/helm-test-chart-0.1.0.tgz  # Updated raw URL
 
 jobs:
   deploy:
