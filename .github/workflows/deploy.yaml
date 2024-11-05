@@ -74,8 +74,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          helm registry login -u AWS --password-stdin <<< $(aws ecr get-login-password --region ${{ env.AWS_REGION }}) $ECR_REGISTRY
-          helm push test-helm-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
+          # Log in to ECR for Helm
+          echo $(aws ecr get-login-password --region ${{ env.AWS_REGION }}) | helm registry login -u AWS --password-stdin $ECR_REGISTRY
+          helm push ./helmcharts/test-helm/test-helm-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
 
       - name: Update values.yaml with New Image Tag
         env:
