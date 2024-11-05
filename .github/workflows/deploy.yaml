@@ -17,7 +17,7 @@ env:
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml
   TARGET_REPO: coforge-nexus/helmcharts
-  HELM_CHART_URL: https://raw.githubusercontent.com/coforge-nexus/helmcharts/main/helm-test-chart/helm-test-chart-0.1.0.tgz  # Raw URL for the Helm chart
+  HELM_CHART_URL: "https://raw.githubusercontent.com/coforge-nexus/helmcharts/main/helm-test-chart/helm-test-chart-0.1.0.tgz"
 
 jobs:
   deploy:
@@ -58,11 +58,22 @@ jobs:
       - name: Download Helm Chart
         run: |
           curl -L -o helm-test-chart-0.1.0.tgz ${{ env.HELM_CHART_URL }}
+          file helm-test-chart-0.1.0.tgz  # Check file type
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Package Helm Chart
+        id: package-helm
+        env:
+          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+        run: |
+          helm package helm-test-chart-0.1.0.tgz --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
 
       - name: Push Helm Chart to ECR as OCI
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
           # Log in to ECR for Helm
           echo $(aws ecr get-login-password --region ${{ env.AWS_REGION }}) | helm registry login -u AWS --password-stdin $ECR_REGISTRY
