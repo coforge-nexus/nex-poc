@@ -17,7 +17,7 @@ env:
   AWS_REGION: eu-west-1
   VALUES_FILE: nexus-application/values.yaml
   TARGET_REPO: coforge-nexus/helmcharts
-  HELM_CHART_URL: https://raw.githubusercontent.com/coforge-nexus/helmcharts/main/helm-test-chart/helm-test-chart-0.1.0.tgz  # Updated raw URL
+  HELM_CHART_URL: https://raw.githubusercontent.com/coforge-nexus/helmcharts/main/helm-test-chart/helm-test-chart-0.1.0.tgz  # Raw URL for the Helm chart
 
 jobs:
   deploy:
@@ -57,7 +57,7 @@ jobs:
 
       - name: Download Helm Chart
         run: |
-          curl -L -o helm-chart.tgz ${{ env.HELM_CHART_URL }}
+          curl -L -o helm-test-chart-0.1.0.tgz ${{ env.HELM_CHART_URL }}
 
       - name: Push Helm Chart to ECR as OCI
         env:
@@ -66,7 +66,7 @@ jobs:
         run: |
           # Log in to ECR for Helm
           echo $(aws ecr get-login-password --region ${{ env.AWS_REGION }}) | helm registry login -u AWS --password-stdin $ECR_REGISTRY
-          helm push helm-chart.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
+          helm push helm-test-chart-0.1.0.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
 
       - name: Update values.yaml with New Image Tag
         env:
