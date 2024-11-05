@@ -69,6 +69,10 @@ jobs:
         run: |
           helm package ./helmcharts/helm-test-chart --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
 
+      - name: List Packaged Helm Charts
+        run: |
+          ls ./helmcharts/helm-test-chart
+
       - name: Push Helm Chart to ECR as OCI
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
