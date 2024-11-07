@@ -5,41 +5,50 @@ on:
     branches:
       - main
 
+env:
+  AWS_REGION: eu-west-1  # Set your AWS region here
+  ECR_HELM_REPOSITORY: helm-test-chart  # Set your ECR Helm repository name
+  TARGET_REPO_PATH: coforge-nexus/helmcharts  # GitHub repo with Helm chart
+  HELM_CHART_PATH: helm-test-chart  # Path within repo to Helm chart directory
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+      - name: Configure AWS credentials from OIDC
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE }}
-          aws-region: eu-west-1  # Ensure you set the correct AWS region here
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Log in to ECR for Docker and Helm
+      - name: Login to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build and Package Helm Chart
+      - name: Clone Helm Chart Repository
         run: |
-          # Package the Helm chart
-          helm package path/to/chart -d packaged_charts
+          git clone https://github.com/${{ env.TARGET_REPO_PATH }}.git
+          cd helmcharts/${{ env.HELM_CHART_PATH }}
 
-      - name: Tag and Push Helm Chart to ECR
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Package Helm Chart
+        run: |
+          helm package . --destination ../packaged_charts
+
+      - name: Push Helm Chart to ECR as OCI
         env:
-          ECR_REGISTRY: 123456789012.dkr.ecr.eu-west-1.amazonaws.com
-          ECR_HELM_REPO: helm-test-chart
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
         run: |
-          # Use Helm to authenticate and save the Helm chart as an OCI artifact
-          helm registry login -u AWS --password-stdin $ECR_REGISTRY
-
-          # Save and push the Helm chart
-          helm chart save packaged_charts/helm-test-chart-0.1.0.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPO:0.1.0
-          helm chart push oci://$ECR_REGISTRY/$ECR_HELM_REPO:0.1.0
-
-      - name: Verify Helm Chart in ECR
-        run: |
-          aws ecr describe-images --repository-name $ECR_HELM_REPO --region eu-west-1
+          # Log in to ECR for Helm
+          echo $(aws ecr get-login-password --region ${{ env.AWS_REGION }}) | helm registry login -u AWS --password-stdin $ECR_REGISTRY
+          
+          # Push the Helm chart as an OCI artifact
+          helm chart save ../packaged_charts/helm-test-chart-0.1.0.tgz oci://$ECR_REGISTRY/${{ env.ECR_HELM_REPOSITORY }}
+          helm chart push oci://$ECR_REGISTRY/${{ env.ECR_HELM_REPOSITORY }}
