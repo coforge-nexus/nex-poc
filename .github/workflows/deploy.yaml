@@ -17,7 +17,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: eu-west-1  # Ensure you set the correct AWS region here
 
       - name: Log in to ECR for Docker and Helm
         id: ecr-login
@@ -30,7 +30,7 @@ jobs:
 
       - name: Tag and Push Helm Chart to ECR
         env:
-          ECR_REGISTRY: 123456789012.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          ECR_REGISTRY: 123456789012.dkr.ecr.eu-west-1.amazonaws.com
           ECR_HELM_REPO: helm-test-chart
         run: |
           # Use Helm to authenticate and save the Helm chart as an OCI artifact
@@ -42,4 +42,4 @@ jobs:
 
       - name: Verify Helm Chart in ECR
         run: |
-          aws ecr describe-images --repository-name $ECR_HELM_REPO --region ${{ env.AWS_REGION }}
+          aws ecr describe-images --repository-name $ECR_HELM_REPO --region eu-west-1
