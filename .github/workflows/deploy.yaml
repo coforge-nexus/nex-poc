@@ -1,102 +1,74 @@
-name: Build and Deploy Docker and Helm to ECR
-
+name: Update ECR Image in values.yaml
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
+ 
 permissions:
-  id-token: write
-  contents: write
-  actions: write
-
+  id-token: write  # Required for requesting the JWT
+  contents: write  # Required for actions/checkout
+  actions: write   # Required for actions
+ 
 env:
-  ECR_DOCKER_REPOSITORY: nexus-repo  # Docker repository name in ECR
-  ECR_HELM_REPOSITORY: helm-test-chart  # Helm repository name in ECR
+  ECR_REPOSITORY: nexus-repo
   AWS_REGION: eu-west-1
-  VALUES_FILE: nexus-application/values.yaml
-  TARGET_REPO: coforge-nexus/helmcharts
-  HELM_CHART_URL: https://github.com/coforge-nexus/helmcharts/raw/main/helm-test-chart/helm-test-chart-0.1.0.tgz  # URL to the Helm chart
-
+  VALUES_FILE: nexus-application/values.yaml  # Path to your values.yaml file in the other repo
+  OTHER_REPO: coforge-nexus/helmcharts  # Replace with your target repository
+ 
 jobs:
-  deploy:
-    name: Build, Push Docker and Helm to ECR, and Update values.yaml
+  update-deployment:
+    name: Build, Push Image, and Update values.yaml
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-
-      - name: Get Commit Hash
-        id: commit
-        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-      - name: Get Timestamp
-        id: timestamp
-        run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
-
-      - name: Configure AWS credentials
+ 
+      - name: Configure AWS credentials from OIDC
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-
+ 
       - name: Login to Amazon ECR
-        id: ecr-login
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build, Tag, and Push Docker Image to ECR
-        id: build-docker-image
+ 
+      - name: Get commit hash
+        id: get-commit-hash
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+ 
+      - name: Get timestamp
+        id: get-timestamp
+        run: echo "timestamp=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+ 
+      - name: Build, Tag, and Push Docker Image to Amazon ECR
+        id: build-image
         env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_DOCKER_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
-          docker push $ECR_REGISTRY/$ECR_DOCKER_REPOSITORY:$IMAGE_TAG
-
-      - name: Download Helm Chart
-        run: |
-          curl -L -o helm-test-chart-0.1.0.tgz ${{ env.HELM_CHART_URL }}
-          if file helm-test-chart-0.1.0.tgz | grep -q 'gzip compressed data'; then
-            echo "Helm chart downloaded successfully"
-          else
-            echo "Error: The file is not a valid Helm chart (gzipped tarball)."
-            exit 1
-          fi
-
-      - name: Install Helm
-        run: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      - name: Package Helm Chart
-        id: package-helm
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+ 
+      - name: Update values.yaml with New Image
         env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
+          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}  # Use your token from secrets
         run: |
-          helm package helm-test-chart --version "0.1.0-${{ env.commit_hash }}" --app-version "0.1.0-${{ env.commit_hash }}"
-
-      - name: Push Helm Chart to ECR as OCI
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
-        run: |
-          # Log in to ECR for Helm
-          echo $(aws ecr get-login-password --region ${{ env.AWS_REGION }}) | helm registry login -u AWS --password-stdin $ECR_REGISTRY
-          helm push helm-test-chart-0.1.0-${{ env.commit_hash }}.tgz oci://$ECR_REGISTRY/$ECR_HELM_REPOSITORY
-
-      - name: Update values.yaml with New Image Tag
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ env.commit_hash }}-${{ env.timestamp }}
-          MY_GITHUB_PAT: ${{ secrets.MY_GITHUB_PAT }}
-        run: |
-          git clone https://${{ secrets.MY_GITHUB_PAT }}:x-oauth-basic@github.com/${{ env.TARGET_REPO }}.git other-repo
+          # Checkout the other repository with the token
+          git clone https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git other-repo
           cd other-repo
-          sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_DOCKER_REPOSITORY|" ${{ env.VALUES_FILE }}
+          # Update the values.yaml file with the new image
+          sed -i "s|repository: .*|repository: $ECR_REGISTRY/$ECR_REPOSITORY|" ${{ env.VALUES_FILE }}
           sed -i "s|tag: .*|tag: $IMAGE_TAG|" ${{ env.VALUES_FILE }}
+ 
+          # Commit the changes
           git config --local user.email "Gandam.manikantha@coforge.com"
           git config --local user.name "Ubhaskar-coforge"
           git add ${{ env.VALUES_FILE }}
           git commit -m "Update values.yaml with new image tag $IMAGE_TAG"
-          git push origin main
+ 
+          # Push the changes using the token
+          git push https://$MY_GITHUB_PAT:x-oauth-basic@github.com/${{ env.OTHER_REPO }}.git
