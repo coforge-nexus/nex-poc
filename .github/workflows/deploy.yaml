@@ -1,4 +1,4 @@
-name: Update ECR Image in values.yaml
+name: Update ECR Image in values.yaml 
 on:
   push:
     branches:
